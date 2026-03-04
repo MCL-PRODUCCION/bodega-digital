@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCL - Bodega Virtual</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root { --navy: #1a252f; --blue: #0d6efd; --bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; }
+        .sidebar { width: 280px; background: var(--navy); min-height: 100vh; position: fixed; transition: 0.3s; z-index: 1000; color: white; padding: 20px; display: none; }
+        .main-content { margin-left: 280px; padding: 20px; transition: 0.3s; display: none; }
+        @media (max-width: 991px) {
+            .sidebar { margin-left: -280px; display: block; }
+            .sidebar.active { margin-left: 0; }
+            .main-content { margin-left: 0; padding-top: 70px; display: block; }
+            .mobile-header { display: flex !important; }
+        }
+        .mobile-header { display: none; position: fixed; top: 0; width: 100%; background: var(--navy); padding: 15px; z-index: 1100; justify-content: space-between; align-items: center; color: white; }
+        #login-container { position: fixed; inset: 0; background: var(--navy); display: flex; justify-content: center; align-items: center; z-index: 2000; }
+        .login-card { background: white; padding: 35px; border-radius: 20px; width: 90%; max-width: 380px; text-align: center; }
+        .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 3000; }
+        .nav-link { color: rgba(255,255,255,0.7); padding: 12px; border-radius: 10px; display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; }
+        .nav-link.active { background: rgba(255,255,255,0.1); color: white; border-left: 4px solid var(--blue); }
+        .admin-only { display: none; }
+        .badge-agotado { background: #ff4757; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.7rem; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+
+<div id="loader" class="loading-overlay"><div class="spinner-border text-primary"></div></div>
+
+<div class="mobile-header shadow" id="mobile-header" style="display: none;">
+    <img src="logo.png" alt="MCL" style="height: 30px; filter: brightness(0) invert(1);">
+    <button class="btn btn-primary" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+</div>
+
+<div id="login-container">
+    <div class="login-card shadow-lg">
+        <img src="logo.png" alt="MCL" style="max-width: 140px; margin-bottom: 20px;">
+        <h5 class="fw-bold text-muted mb-4">Acceso Bodega</h5>
+        <form id="form-login">
+            <input type="text" id="user" class="form-control mb-3" placeholder="Usuario" required>
+            <input type="password" id="pass" class="form-control mb-4" placeholder="Contraseña" required>
+            <button type="submit" class="btn btn-primary w-100 py-2">Entrar</button>
+        </form>
+    </div>
+</div>
+
+<div class="sidebar shadow" id="sidebar">
+    <div class="text-center mb-4"><img src="logo.png" alt="MCL" style="max-width: 110px; filter: brightness(0) invert(1);"></div>
+    <div class="p-3 rounded mb-4 text-center" style="background: rgba(255,255,255,0.05);">
+        <h6 id="logged-user-name" class="text-info mb-1 small fw-bold"></h6>
+        <span id="user-role-badge" class="badge bg-secondary" style="font-size: 0.6rem;"></span>
+    </div>
+    <nav class="nav flex-column">
+        <a class="nav-link active" id="btn-stock" onclick="showSection('section-inventario', this)"><i class="bi bi-box-seam"></i> Stock</a>
+        <div id="admin-menu" class="admin-only">
+            <a class="nav-link" onclick="showSection('section-ingreso', this)"><i class="bi bi-plus-circle"></i> Nuevo Ingreso</a>
+            <a class="nav-link" onclick="showSection('section-salida', this)"><i class="bi bi-dash-circle"></i> Salida</a>
+        </div>
+        <hr class="opacity-25 text-white">
+        <a class="nav-link text-danger" onclick="logout()"><i class="bi bi-power"></i> Salir</a>
+    </nav>
+</div>
+
+<div class="main-content" id="main-content">
+    <section id="section-inventario">
+        <h2 class="fw-bold mb-4">Stock Actual</h2>
+        <div class="card p-2 mb-4 border-0 shadow-sm">
+            <input type="text" id="stock-search" class="form-control border-0 shadow-none" placeholder="Buscar ID o Nombre...">
+        </div>
+        <div class="card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr class="small"><th>ID / PRODUCTO</th><th>CANTIDAD</th><th>UBICACIÓN</th></tr>
+                    </thead>
+                    <tbody id="table-stock"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section id="section-ingreso" style="display:none;">
+        <h2 class="fw-bold mb-4">📥 Ingreso Manual (Solo ID)</h2>
+        <div class="card p-4 border-0 shadow-sm">
+            <form id="form-ingreso">
+                <div class="mb-3"><label class="fw-bold small">ID Producto</label><input type="text" id="in-id" class="form-control" required></div>
+                <div class="row g-2">
+                    <div class="col-6"><label class="fw-bold small">Cantidad</label><input type="number" id="in-cantidad" class="form-control" required></div>
+                    <div class="col-6"><label class="fw-bold small">Fecha</label><input type="date" id="in-fecha" class="form-control" required></div>
+                    <div class="col-6"><label class="fw-bold small">Bodega</label><input type="text" id="in-bodega" class="form-control" required></div>
+                    <div class="col-6"><label class="fw-bold small">Rack</label><input type="text" id="in-rack" class="form-control" required></div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 mt-4 py-3">Guardar</button>
+            </form>
+        </div>
+    </section>
+
+    <section id="section-salida" style="display:none;">
+        <h2 class="fw-bold mb-4">📤 Registrar Salida</h2>
+        <div class="card p-4 border-0 shadow-sm">
+            <input type="text" id="search-out" class="form-control form-control-lg mb-3" placeholder="ID para buscar...">
+            <div id="output-area"></div>
+        </div>
+    </section>
+</div>
+
+<script>
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyIVRsyMSs9IBZn5r3O4xat2YEy8bnoxMryav4UEjuMWaKc0DpKPvMs7T1uD-YcNPH2Ow/exec"; 
+    
+    let inventory = [];
+    let currentUser = "";
+    let userRole = "";
+
+    window.onload = function() {
+        const savedUser = localStorage.getItem('mcl_user');
+        const savedRole = localStorage.getItem('mcl_role');
+        if (savedUser && savedRole) {
+            iniciarInterfaz(savedUser, savedRole);
+        }
+    };
+
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
+
+    document.getElementById('form-login').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        showLoader(true);
+        const userVal = document.getElementById('user').value;
+        const passVal = document.getElementById('pass').value;
+
+        try {
+            const responseNormal = await fetch(WEB_APP_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "login", user: userVal, pass: passVal }) 
+            });
+            const result = await responseNormal.json();
+
+            if (result.success) {
+                localStorage.setItem('mcl_user', result.user);
+                localStorage.setItem('mcl_role', result.role);
+                iniciarInterfaz(result.user, result.role);
+            } else { Swal.fire('Error', 'Credenciales incorrectas', 'error'); }
+        } catch (err) { 
+            console.log(err);
+            Swal.fire('Error', 'Error de conexión con Google.', 'error'); 
+        }
+        showLoader(false);
+    });
+
+    async function iniciarInterfaz(user, role) {
+        currentUser = user;
+        userRole = role;
+        document.getElementById('logged-user-name').innerText = currentUser;
+        document.getElementById('user-role-badge').innerText = userRole;
+        if(userRole === "ADMIN") document.getElementById('admin-menu').style.display = 'block';
+        document.getElementById('login-container').style.display = 'none';
+        document.getElementById('sidebar').style.display = 'block';
+        document.getElementById('main-content').style.display = 'block';
+        if (window.innerWidth <= 991) document.getElementById('mobile-header').style.display = 'flex';
+        await loadData();
+    }
+
+    async function loadData() {
+        try {
+            const response = await fetch(WEB_APP_URL);
+            const data = await response.json();
+            inventory = data.map(row => ({ id: row[0], nombre: row[1], cantidad: row[2], fecha: row[3], bodega: row[4], rack: row[5] }));
+            renderStock(inventory);
+        } catch (e) { console.error(e); }
+    }
+
+    function renderStock(data) {
+        const tbody = document.getElementById('table-stock');
+        tbody.innerHTML = data.map(i => `
+            <tr>
+                <td class="ps-3"><div class="fw-bold">${i.id}</div><div class="small text-muted">${i.nombre || 'Sin nombre'}</div></td>
+                <td>${i.cantidad > 0 ? `<span class="badge ${i.cantidad < 5 ? 'bg-warning text-dark' : 'bg-primary'}">${i.cantidad} uds</span>` : `<span class="badge-agotado">AGOTADO</span>`}</td>
+                <td><div class="small fw-bold">${i.bodega}</div><div class="small text-muted">Rack: ${i.rack}</div></td>
+            </tr>
+        `).join('');
+    }
+
+    document.getElementById('stock-search').addEventListener('input', (e) => {
+        const q = e.target.value.toLowerCase();
+        renderStock(inventory.filter(i => i.id.toString().toLowerCase().includes(q) || (i.nombre && i.nombre.toLowerCase().includes(q))));
+    });
+
+    // --- NUEVO BUSCADOR DE SALIDA INTELIGENTE ---
+    document.getElementById('search-out').addEventListener('input', (e) => {
+        const val = e.target.value.trim().toUpperCase();
+        const area = document.getElementById('output-area');
+        
+        if(!val) { area.innerHTML = ''; return; }
+
+        // 1. Buscamos TODOS los registros que coincidan con ese ID o Nombre
+        const matches = inventory.filter(i => 
+            i.id.toString().toUpperCase() === val || 
+            (i.nombre && i.nombre.toUpperCase() === val)
+        );
+
+        if (matches.length > 0) {
+            // 2. De los encontrados, filtramos solo los que TIENEN STOCK (> 0)
+            // Y los ordenamos por fecha (el más viejo primero - Lógica FIFO)
+            const availableBatches = matches
+                .filter(i => i.cantidad > 0)
+                .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+            if (availableBatches.length > 0) {
+                // Si hay stock, tomamos el lote más antiguo disponible
+                const match = availableBatches[0];
+                area.innerHTML = `
+                    <div class="p-3 border rounded shadow-sm bg-white border-start border-primary border-5">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="fw-bold mb-1">${match.nombre || 'ID: ' + match.id}</h6>
+                                <p class="small text-muted mb-0"><b>ID:</b> ${match.id} | <b>Ubicación:</b> ${match.rack}</p>
+                                <p class="small text-muted mb-2"><b>Fecha Lote:</b> ${match.fecha ? match.fecha.split('T')[0] : 'S/F'}</p>
+                            </div>
+                            <span class="badge bg-success">Disponible: ${match.cantidad}</span>
+                        </div>
+                        <div class="input-group mt-2">
+                            <input type="number" id="out-cantidad" class="form-control" placeholder="Cant. a retirar">
+                            <button onclick="confirmarSalida()" class="btn btn-danger">Retirar</button>
+                        </div>
+                    </div>`;
+                window.selectedBatch = match;
+            } else {
+                // Si hay registros pero TODOS están en 0
+                area.innerHTML = `
+                    <div class="alert alert-danger text-center p-4 rounded-4 shadow-sm">
+                        <i class="bi bi-exclamation-octagon display-6 d-block mb-2"></i>
+                        <h4 class="fw-bold">PRODUCTO AGOTADO</h4>
+                        <p class="mb-0">Existen registros para el ID <b>${val}</b>, pero no queda stock disponible en ninguna ubicación.</p>
+                    </div>`;
+            }
+        } else {
+            area.innerHTML = '<p class="text-center text-muted small">ID no encontrado en el sistema...</p>';
+        }
+    });
+
+    async function confirmarSalida() {
+        const cant = parseInt(document.getElementById('out-cantidad').value);
+        if(!cant || cant <= 0 || cant > window.selectedBatch.cantidad) return Swal.fire('Error', 'Cantidad inválida', 'warning');
+        showLoader(true);
+        await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "update", id: window.selectedBatch.id, nuevaCantidad: window.selectedBatch.cantidad - cant, usuario: currentUser }) });
+        await loadData();
+        document.getElementById('search-out').value = '';
+        document.getElementById('output-area').innerHTML = '';
+        Swal.fire('Éxito', 'Stock descontado', 'success');
+        showLoader(false);
+    }
+
+    document.getElementById('form-ingreso').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        showLoader(true);
+        const item = {
+            action: "add",
+            id: document.getElementById('in-id').value,
+            cantidad: parseInt(document.getElementById('in-cantidad').value),
+            fecha: document.getElementById('in-fecha').value,
+            bodega: document.getElementById('in-bodega').value,
+            rack: document.getElementById('in-rack').value,
+            usuario: currentUser
+        };
+        await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(item) });
+        await loadData();
+        e.target.reset();
+        Swal.fire('Éxito', 'Guardado correctamente', 'success');
+        showSection('section-inventario', document.getElementById('btn-stock'));
+        showLoader(false);
+    });
+
+    function showSection(id, el) {
+        document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+        document.getElementById(id).style.display = 'block';
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        if(el) el.classList.add('active');
+        if(window.innerWidth < 992 && document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
+    }
+
+    function logout() { localStorage.clear(); location.reload(); }
+    function showLoader(show) { document.getElementById('loader').style.display = show ? 'flex' : 'none'; }
+</script>
+</body>
+</html>
