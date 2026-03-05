@@ -25,8 +25,6 @@
         .nav-link { color: rgba(255,255,255,0.7); padding: 12px; border-radius: 10px; display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; }
         .nav-link.active { background: rgba(255,255,255,0.1); color: white; border-left: 4px solid var(--blue); }
         .admin-only { display: none; }
-        .badge-agotado { background: #ff4757; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.7rem; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     </style>
 </head>
 <body>
@@ -50,7 +48,7 @@
 </div>
 
 <div class="sidebar shadow" id="sidebar">
-    <div class="text-center mb-4"><h4 class="fw-bold">MCL</h4></div>
+    <div class="text-center mb-4"><h4>MCL</h4></div>
     <div class="p-3 rounded mb-4 text-center" style="background: rgba(255,255,255,0.05);">
         <h6 id="logged-user-name" class="text-info mb-1 small fw-bold"></h6>
         <span id="user-role-badge" class="badge bg-secondary" style="font-size: 0.6rem;"></span>
@@ -67,16 +65,17 @@
 </div>
 
 <div class="main-content" id="main-content">
+    <!-- STOCK -->
     <section id="section-inventario">
         <h2 class="fw-bold mb-4">Stock Actual</h2>
         <div class="card p-2 mb-4 border-0 shadow-sm">
-            <input type="text" id="stock-search" class="form-control border-0 shadow-none" placeholder="Buscar ID o Nombre...">
+            <input type="text" id="stock-search" class="form-control border-0 shadow-none" placeholder="Buscar ID o Producto...">
         </div>
         <div class="card shadow-sm border-0">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="bg-light">
-                        <tr class="small"><th>ID / PRODUCTO</th><th>CANTIDAD</th><th>UBICACIÓN</th></tr>
+                        <tr class="small"><th>PRODUCTO</th><th>STOCK</th><th>UBICACIÓN</th></tr>
                     </thead>
                     <tbody id="table-stock"></tbody>
                 </table>
@@ -84,33 +83,34 @@
         </div>
     </section>
 
+    <!-- INGRESO -->
     <section id="section-ingreso" style="display:none;">
-        <h2 class="fw-bold mb-4">📥 Nuevo Ingreso</h2>
+        <h2 class="fw-bold mb-4">📥 Registro de Ingreso</h2>
         <div class="card p-4 border-0 shadow-sm">
             <form id="form-ingreso">
-                <div class="mb-3"><label class="fw-bold small">ID Producto</label><input type="text" id="in-id" class="form-control" required></div>
+                <div class="mb-3"><label class="small fw-bold">ID Producto</label><input type="text" id="in-id" class="form-control" required></div>
                 <div class="row g-2">
-                    <div class="col-6"><label class="fw-bold small">Cantidad</label><input type="number" id="in-cantidad" class="form-control" required></div>
-                    <div class="col-6"><label class="fw-bold small">Fecha</label><input type="date" id="in-fecha" class="form-control" required></div>
-                    <div class="col-6"><label class="fw-bold small">Bodega</label><input type="text" id="in-bodega" class="form-control" required></div>
-                    <div class="col-6"><label class="fw-bold small">Rack</label><input type="text" id="in-rack" class="form-control" required></div>
+                    <div class="col-6"><label class="small fw-bold">Cantidad</label><input type="number" id="in-cantidad" class="form-control" required></div>
+                    <div class="col-6"><label class="small fw-bold">Fecha</label><input type="date" id="in-fecha" class="form-control" required></div>
+                    <div class="col-6"><label class="small fw-bold">Bodega</label><input type="text" id="in-bodega" class="form-control" required></div>
+                    <div class="col-6"><label class="small fw-bold">Rack</label><input type="text" id="in-rack" class="form-control" required></div>
                 </div>
-                <button type="submit" class="btn btn-primary w-100 mt-4 py-3 fw-bold">GUARDAR</button>
+                <button type="submit" class="btn btn-primary w-100 mt-4 py-3 fw-bold">GUARDAR EN STOCK</button>
             </form>
         </div>
     </section>
 
+    <!-- SALIDA -->
     <section id="section-salida" style="display:none;">
-        <h2 class="fw-bold mb-4">📤 Salida de Stock</h2>
+        <h2 class="fw-bold mb-4">📤 Salida Instantánea</h2>
         <div class="card p-4 border-0 shadow-sm">
-            <input type="text" id="search-out" class="form-control form-control-lg mb-3" placeholder="Escribe ID o Nombre...">
+            <input type="text" id="search-out" class="form-control form-control-lg mb-3" placeholder="ID o Nombre para retirar...">
             <div id="output-area"></div>
         </div>
     </section>
 </div>
 
 <script>
-    // URL PROPORCIONADA
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyIVRsyMSs9IBZn5r3O4xat2YEy8bnoxMryav4UEjuMWaKc0DpKPvMs7T1uD-YcNPH2Ow/exec"; 
     
     let inventory = [];
@@ -131,16 +131,21 @@
     document.getElementById('form-login').addEventListener('submit', async (e) => {
         e.preventDefault();
         showLoader(true);
-        const userVal = document.getElementById('user').value;
-        const passVal = document.getElementById('pass').value;
         try {
-            const res = await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: "login", user: userVal, pass: passVal }) });
+            const res = await fetch(WEB_APP_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ 
+                    action: "login", 
+                    user: document.getElementById('user').value, 
+                    pass: document.getElementById('pass').value 
+                }) 
+            });
             const result = await res.json();
             if (result.success) {
                 localStorage.setItem('mcl_user', result.user);
                 localStorage.setItem('mcl_role', result.role);
                 iniciarInterfaz(result.user, result.role);
-            } else { Toast.fire({ icon: 'error', title: 'Credenciales incorrectas' }); }
+            } else { Toast.fire({ icon: 'error', title: 'Usuario o clave incorrecta' }); }
         } catch (err) { Toast.fire({ icon: 'error', title: 'Error de conexión' }); }
         showLoader(false);
     });
@@ -153,7 +158,6 @@
         document.getElementById('login-container').style.display = 'none';
         document.getElementById('sidebar').style.display = 'block';
         document.getElementById('main-content').style.display = 'block';
-        if (window.innerWidth <= 991) document.getElementById('mobile-header').style.display = 'flex';
         await loadData();
     }
 
@@ -161,38 +165,40 @@
         try {
             const response = await fetch(WEB_APP_URL);
             const data = await response.json();
-            inventory = data.map(row => ({ id: row[0], nombre: row[1], cantidad: row[2], fecha: row[3], bodega: row[4], rack: row[5] }));
+            inventory = data; // Ya vienen mapeados con 'nombre' desde el servidor
             renderStock(inventory);
-        } catch (e) { console.error("Error cargando datos:", e); }
+        } catch (e) { console.error(e); }
     }
 
     function renderStock(data) {
         const tbody = document.getElementById('table-stock');
         tbody.innerHTML = data.map(i => `
             <tr>
-                <td class="ps-3"><div class="fw-bold">${i.id}</div><div class="small text-muted">${i.nombre || 'Producto'}</div></td>
+                <td class="ps-3"><div class="fw-bold">${i.id}</div><div class="small text-muted">${i.nombre}</div></td>
                 <td><span class="badge ${i.cantidad < 5 ? 'bg-warning text-dark' : 'bg-primary'}">${i.cantidad} uds</span></td>
                 <td><div class="small fw-bold">${i.bodega}</div><div class="small text-muted">Rack: ${i.rack}</div></td>
             </tr>
         `).join('');
     }
 
+    // Buscador
     document.getElementById('stock-search').addEventListener('input', (e) => {
         const q = e.target.value.toLowerCase();
-        renderStock(inventory.filter(i => i.id.toString().toLowerCase().includes(q) || (i.nombre && i.nombre.toLowerCase().includes(q))));
+        renderStock(inventory.filter(i => i.id.toString().includes(q) || i.nombre.toLowerCase().includes(q)));
     });
 
+    // Salida
     window.currentOutMatches = [];
     document.getElementById('search-out').addEventListener('input', (e) => {
         const val = e.target.value.trim().toLowerCase();
         const area = document.getElementById('output-area');
         if(!val) { area.innerHTML = ''; return; }
-        const matches = inventory.filter(i => i.id.toString().toLowerCase().includes(val) || (i.nombre && i.nombre.toLowerCase().includes(val)));
+        const matches = inventory.filter(i => i.id.toString().toLowerCase().includes(val) || i.nombre.toLowerCase().includes(val));
         window.currentOutMatches = matches;
         area.innerHTML = matches.map((match, index) => `
             <div class="p-3 border rounded shadow-sm bg-white mb-2">
                 <div class="d-flex justify-content-between align-items-center">
-                    <div><h6 class="fw-bold mb-0">${match.id}</h6><small>Stock: ${match.cantidad} | Ubicación: ${match.rack}</small></div>
+                    <div><h6 class="fw-bold mb-0">${match.nombre}</h6><small>${match.id} | Stock: ${match.cantidad} | Rack: ${match.rack}</small></div>
                     <div class="input-group input-group-sm" style="width: 140px;">
                         <input type="number" id="out-cnt-${index}" class="form-control" value="1">
                         <button onclick="confirmarSalida(${index})" class="btn btn-danger"><i class="bi bi-check"></i></button>
@@ -203,22 +209,19 @@
 
     async function confirmarSalida(index) {
         const match = window.currentOutMatches[index];
-        const cantARetirar = parseInt(document.getElementById(`out-cnt-${index}`).value);
-        
-        if(!cantARetirar || cantARetirar <= 0 || cantARetirar > match.cantidad) {
-            return Toast.fire({ icon: 'warning', title: 'Cantidad no válida' });
-        }
+        const cant = parseInt(document.getElementById(`out-cnt-${index}`).value);
+        if(!cant || cant <= 0 || cant > match.cantidad) return Toast.fire({ icon: 'warning', title: 'Revisar cantidad' });
 
-        const nuevaCantidad = match.cantidad - cantARetirar;
+        const nuevaCant = match.cantidad - cant;
 
-        // ACTUALIZACIÓN OPTIMISTA (Borra de la tabla de inmediato si es 0)
-        const invIndex = inventory.findIndex(i => i.id === match.id && i.rack === match.rack);
-        if (invIndex !== -1) {
-            if (nuevaCantidad <= 0) {
-                inventory.splice(invIndex, 1);
-                Toast.fire({ icon: 'info', title: 'Producto agotado y eliminado' });
+        // Actualización local rápida
+        const invIdx = inventory.findIndex(i => i.id === match.id && i.rack === match.rack);
+        if (invIdx !== -1) {
+            if (nuevaCant <= 0) {
+                inventory.splice(invIdx, 1);
+                Toast.fire({ icon: 'info', title: 'Agotado y eliminado' });
             } else {
-                inventory[invIndex].cantidad = nuevaCantidad;
+                inventory[invIdx].cantidad = nuevaCant;
                 Toast.fire({ icon: 'success', title: 'Salida registrada' });
             }
             renderStock(inventory);
@@ -227,22 +230,13 @@
         document.getElementById('search-out').value = '';
         document.getElementById('output-area').innerHTML = '';
 
-        // SINCRONIZACIÓN CON GOOGLE SHEETS
+        // Sincronizar servidor
         try {
             await fetch(WEB_APP_URL, { 
                 method: 'POST', 
-                body: JSON.stringify({ 
-                    action: "update", 
-                    id: match.id, 
-                    rack: match.rack, 
-                    nuevaCantidad: nuevaCantidad,
-                    usuario: currentUser 
-                }) 
+                body: JSON.stringify({ action: "update", id: match.id, rack: match.rack, nuevaCantidad: nuevaCant }) 
             });
-        } catch (e) {
-            console.error(e);
-            loadData(); // Si falla, recargar datos reales
-        }
+        } catch (e) { loadData(); }
     }
 
     document.getElementById('form-ingreso').addEventListener('submit', async function(e) {
@@ -256,12 +250,8 @@
             rack: document.getElementById('in-rack').value,
             usuario: currentUser
         };
-
-        inventory.push({ ...payload, nombre: "Nuevo" });
-        renderStock(inventory);
+        Toast.fire({ icon: 'success', title: 'Ingresado' });
         document.getElementById('form-ingreso').reset();
-        Toast.fire({ icon: 'success', title: 'Ingreso guardado' });
-
         await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
         loadData();
     });
@@ -279,4 +269,3 @@
 </script>
 </body>
 </html>
-
