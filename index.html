@@ -33,14 +33,13 @@
 
 <div id="loader" class="loading-overlay"><div class="spinner-border text-primary"></div></div>
 
-<div class="mobile-header shadow" id="mobile-header" style="display: none;">
-    <img src="logo.png" alt="MCL" style="height: 30px; filter: brightness(0) invert(1);">
+<div class="mobile-header shadow" id="mobile-header">
+    <span class="fw-bold">MCL BODEGA</span>
     <button class="btn btn-primary" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
 </div>
 
 <div id="login-container">
     <div class="login-card shadow-lg">
-        <img src="logo.png" alt="MCL" style="max-width: 140px; margin-bottom: 20px;">
         <h5 class="fw-bold text-muted mb-4">Acceso Bodega</h5>
         <form id="form-login">
             <input type="text" id="user" class="form-control mb-3" placeholder="Usuario" required>
@@ -51,16 +50,16 @@
 </div>
 
 <div class="sidebar shadow" id="sidebar">
-    <div class="text-center mb-4"><img src="logo.png" alt="MCL" style="max-width: 110px; filter: brightness(0) invert(1);"></div>
+    <div class="text-center mb-4"><h4 class="fw-bold">MCL</h4></div>
     <div class="p-3 rounded mb-4 text-center" style="background: rgba(255,255,255,0.05);">
         <h6 id="logged-user-name" class="text-info mb-1 small fw-bold"></h6>
         <span id="user-role-badge" class="badge bg-secondary" style="font-size: 0.6rem;"></span>
     </div>
     <nav class="nav flex-column">
-        <a class="nav-link active" id="btn-stock" onclick="showSection('section-inventario', this)"><i class="bi bi-box-seam"></i> Stock</a>
+        <a class="nav-link active" onclick="showSection('section-inventario', this)"><i class="bi bi-box-seam"></i> Stock</a>
         <div id="admin-menu" class="admin-only">
-            <a class="nav-link" id="btn-ingreso" onclick="showSection('section-ingreso', this)"><i class="bi bi-plus-circle"></i> Nuevo Ingreso</a>
-            <a class="nav-link" id="btn-salida" onclick="showSection('section-salida', this)"><i class="bi bi-dash-circle"></i> Salida</a>
+            <a class="nav-link" onclick="showSection('section-ingreso', this)"><i class="bi bi-plus-circle"></i> Ingreso</a>
+            <a class="nav-link" onclick="showSection('section-salida', this)"><i class="bi bi-dash-circle"></i> Salida</a>
         </div>
         <hr class="opacity-25 text-white">
         <a class="nav-link text-danger" onclick="logout()"><i class="bi bi-power"></i> Salir</a>
@@ -86,51 +85,49 @@
     </section>
 
     <section id="section-ingreso" style="display:none;">
-        <h2 class="fw-bold mb-4">📥 Ingreso Instantáneo</h2>
+        <h2 class="fw-bold mb-4">📥 Nuevo Ingreso</h2>
         <div class="card p-4 border-0 shadow-sm">
             <form id="form-ingreso">
-                <div class="mb-3"><label class="fw-bold small">ID Producto</label><input type="text" id="in-id" class="form-control form-control-lg" required></div>
+                <div class="mb-3"><label class="fw-bold small">ID Producto</label><input type="text" id="in-id" class="form-control" required></div>
                 <div class="row g-2">
                     <div class="col-6"><label class="fw-bold small">Cantidad</label><input type="number" id="in-cantidad" class="form-control" required></div>
                     <div class="col-6"><label class="fw-bold small">Fecha</label><input type="date" id="in-fecha" class="form-control" required></div>
                     <div class="col-6"><label class="fw-bold small">Bodega</label><input type="text" id="in-bodega" class="form-control" required></div>
                     <div class="col-6"><label class="fw-bold small">Rack</label><input type="text" id="in-rack" class="form-control" required></div>
                 </div>
-                <button type="submit" class="btn btn-primary w-100 mt-4 py-3 fw-bold">GUARDAR (ENTER)</button>
+                <button type="submit" class="btn btn-primary w-100 mt-4 py-3 fw-bold">GUARDAR</button>
             </form>
         </div>
     </section>
 
     <section id="section-salida" style="display:none;">
-        <h2 class="fw-bold mb-4">📤 Salida Instantánea</h2>
+        <h2 class="fw-bold mb-4">📤 Salida de Stock</h2>
         <div class="card p-4 border-0 shadow-sm">
-            <input type="text" id="search-out" class="form-control form-control-lg mb-3" placeholder="Buscar ID o Nombre...">
+            <input type="text" id="search-out" class="form-control form-control-lg mb-3" placeholder="Escribe ID o Nombre...">
             <div id="output-area"></div>
         </div>
     </section>
 </div>
 
 <script>
+    // URL PROPORCIONADA
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyIVRsyMSs9IBZn5r3O4xat2YEy8bnoxMryav4UEjuMWaKc0DpKPvMs7T1uD-YcNPH2Ow/exec"; 
     
     let inventory = [];
     let currentUser = "";
     let userRole = "";
 
-    const Toast = Swal.mixin({
-        toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, timerProgressBar: true
-    });
+    const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
 
     window.onload = function() {
         const savedUser = localStorage.getItem('mcl_user');
         const savedRole = localStorage.getItem('mcl_role');
-        if (savedUser && savedRole) iniciarInterfaz(savedUser, savedRole);
+        if (savedUser) iniciarInterfaz(savedUser, savedRole);
         document.getElementById('in-fecha').value = new Date().toISOString().split('T')[0];
     };
 
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
 
-    // LOGIN (Sigue siendo síncrono porque requiere validación real)
     document.getElementById('form-login').addEventListener('submit', async (e) => {
         e.preventDefault();
         showLoader(true);
@@ -166,15 +163,15 @@
             const data = await response.json();
             inventory = data.map(row => ({ id: row[0], nombre: row[1], cantidad: row[2], fecha: row[3], bodega: row[4], rack: row[5] }));
             renderStock(inventory);
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Error cargando datos:", e); }
     }
 
     function renderStock(data) {
         const tbody = document.getElementById('table-stock');
         tbody.innerHTML = data.map(i => `
             <tr>
-                <td class="ps-3"><div class="fw-bold">${i.id}</div><div class="small text-muted">${i.nombre || 'Sin nombre'}</div></td>
-                <td>${i.cantidad > 0 ? `<span class="badge ${i.cantidad < 5 ? 'bg-warning text-dark' : 'bg-primary'}">${i.cantidad} uds</span>` : `<span class="badge-agotado">AGOTADO</span>`}</td>
+                <td class="ps-3"><div class="fw-bold">${i.id}</div><div class="small text-muted">${i.nombre || 'Producto'}</div></td>
+                <td><span class="badge ${i.cantidad < 5 ? 'bg-warning text-dark' : 'bg-primary'}">${i.cantidad} uds</span></td>
                 <td><div class="small fw-bold">${i.bodega}</div><div class="small text-muted">Rack: ${i.rack}</div></td>
             </tr>
         `).join('');
@@ -185,79 +182,88 @@
         renderStock(inventory.filter(i => i.id.toString().toLowerCase().includes(q) || (i.nombre && i.nombre.toLowerCase().includes(q))));
     });
 
-    // --- SALIDA INSTANTÁNEA ---
     window.currentOutMatches = [];
     document.getElementById('search-out').addEventListener('input', (e) => {
         const val = e.target.value.trim().toLowerCase();
         const area = document.getElementById('output-area');
         if(!val) { area.innerHTML = ''; return; }
         const matches = inventory.filter(i => i.id.toString().toLowerCase().includes(val) || (i.nombre && i.nombre.toLowerCase().includes(val)));
-        if (matches.length > 0) {
-            const available = matches.filter(i => i.cantidad > 0).sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-            window.currentOutMatches = available;
-            area.innerHTML = available.map((match, index) => `
-                <div class="p-3 border rounded shadow-sm bg-white mb-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div><h6 class="fw-bold mb-0">${match.id} - ${match.nombre || ''}</h6><small>Stock: ${match.cantidad} | Rack: ${match.rack}</small></div>
-                        <div class="input-group input-group-sm" style="width: 140px;">
-                            <input type="number" id="out-cnt-${index}" class="form-control" value="1" onkeyup="if(event.key==='Enter') confirmarSalida(${index})">
-                            <button onclick="confirmarSalida(${index})" class="btn btn-danger"><i class="bi bi-check"></i></button>
-                        </div>
+        window.currentOutMatches = matches;
+        area.innerHTML = matches.map((match, index) => `
+            <div class="p-3 border rounded shadow-sm bg-white mb-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div><h6 class="fw-bold mb-0">${match.id}</h6><small>Stock: ${match.cantidad} | Ubicación: ${match.rack}</small></div>
+                    <div class="input-group input-group-sm" style="width: 140px;">
+                        <input type="number" id="out-cnt-${index}" class="form-control" value="1">
+                        <button onclick="confirmarSalida(${index})" class="btn btn-danger"><i class="bi bi-check"></i></button>
                     </div>
-                </div>`).join('');
-            if(available.length === 1) setTimeout(() => document.getElementById('out-cnt-0').focus(), 50);
-        }
+                </div>
+            </div>`).join('');
     });
 
-    function confirmarSalida(index) {
+    async function confirmarSalida(index) {
         const match = window.currentOutMatches[index];
-        const cant = parseInt(document.getElementById(`out-cnt-${index}`).value);
-        if(!cant || cant <= 0 || cant > match.cantidad) return Toast.fire({ icon: 'warning', title: 'Cantidad inválida' });
+        const cantARetirar = parseInt(document.getElementById(`out-cnt-${index}`).value);
+        
+        if(!cantARetirar || cantARetirar <= 0 || cantARetirar > match.cantidad) {
+            return Toast.fire({ icon: 'warning', title: 'Cantidad no válida' });
+        }
 
-        // ACTUALIZACIÓN OPTIMISTA (Local)
+        const nuevaCantidad = match.cantidad - cantARetirar;
+
+        // ACTUALIZACIÓN OPTIMISTA (Borra de la tabla de inmediato si es 0)
         const invIndex = inventory.findIndex(i => i.id === match.id && i.rack === match.rack);
         if (invIndex !== -1) {
-            inventory[invIndex].cantidad -= cant;
+            if (nuevaCantidad <= 0) {
+                inventory.splice(invIndex, 1);
+                Toast.fire({ icon: 'info', title: 'Producto agotado y eliminado' });
+            } else {
+                inventory[invIndex].cantidad = nuevaCantidad;
+                Toast.fire({ icon: 'success', title: 'Salida registrada' });
+            }
             renderStock(inventory);
         }
 
-        // LIMPIEZA INMEDIATA
         document.getElementById('search-out').value = '';
         document.getElementById('output-area').innerHTML = '';
-        document.getElementById('search-out').focus();
-        Toast.fire({ icon: 'success', title: 'Registrado' });
 
-        // SINCRONIZACIÓN EN SEGUNDO PLANO
-        fetch(WEB_APP_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ action: "update", id: match.id, nuevaCantidad: inventory[invIndex].cantidad, usuario: currentUser }) 
-        }).catch(() => { loadData(); Toast.fire({ icon: 'error', title: 'Error de sincronización' }); });
+        // SINCRONIZACIÓN CON GOOGLE SHEETS
+        try {
+            await fetch(WEB_APP_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ 
+                    action: "update", 
+                    id: match.id, 
+                    rack: match.rack, 
+                    nuevaCantidad: nuevaCantidad,
+                    usuario: currentUser 
+                }) 
+            });
+        } catch (e) {
+            console.error(e);
+            loadData(); // Si falla, recargar datos reales
+        }
     }
 
-    // --- INGRESO INSTANTÁNEO ---
-    document.getElementById('form-ingreso').addEventListener('submit', function(e) {
+    document.getElementById('form-ingreso').addEventListener('submit', async function(e) {
         e.preventDefault();
-        const id = document.getElementById('in-id').value;
-        const cant = parseInt(document.getElementById('in-cantidad').value);
-        const fecha = document.getElementById('in-fecha').value;
-        const bodega = document.getElementById('in-bodega').value;
-        const rack = document.getElementById('in-rack').value;
+        const payload = {
+            action: "add",
+            id: document.getElementById('in-id').value,
+            cantidad: parseInt(document.getElementById('in-cantidad').value),
+            fecha: document.getElementById('in-fecha').value,
+            bodega: document.getElementById('in-bodega').value,
+            rack: document.getElementById('in-rack').value,
+            usuario: currentUser
+        };
 
-        // ACTUALIZACIÓN OPTIMISTA
-        inventory.push({ id, nombre: "Cargando...", cantidad: cant, fecha, bodega, rack });
+        inventory.push({ ...payload, nombre: "Nuevo" });
         renderStock(inventory);
+        document.getElementById('form-ingreso').reset();
+        Toast.fire({ icon: 'success', title: 'Ingreso guardado' });
 
-        // LIMPIEZA INMEDIATA
-        document.getElementById('in-id').value = '';
-        document.getElementById('in-cantidad').value = '';
-        document.getElementById('in-id').focus();
-        Toast.fire({ icon: 'success', title: 'Guardado' });
-
-        // SINCRONIZACIÓN EN SEGUNDO PLANO
-        fetch(WEB_APP_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ action: "add", id, cantidad: cant, fecha, bodega, rack, usuario: currentUser }) 
-        }).then(() => loadData()).catch(() => { loadData(); Toast.fire({ icon: 'error', title: 'Error de red' }); });
+        await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
+        loadData();
     });
 
     function showSection(id, el) {
@@ -265,9 +271,7 @@
         document.getElementById(id).style.display = 'block';
         document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
         if(el) el.classList.add('active');
-        if(id === 'section-salida') setTimeout(() => document.getElementById('search-out').focus(), 100);
-        if(id === 'section-ingreso') setTimeout(() => document.getElementById('in-id').focus(), 100);
-        if(window.innerWidth < 992 && document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
+        if(window.innerWidth < 992) toggleSidebar();
     }
 
     function logout() { localStorage.clear(); location.reload(); }
@@ -275,3 +279,4 @@
 </script>
 </body>
 </html>
+
